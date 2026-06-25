@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Light/Dark Mode">
+        <span class="theme-label">Light</span>
+        <i class="ph-fill ph-toggle-left theme-icon"></i>
+    </button>
+
+    <div class="app-container">
+        <header class="header">
+            <h1 class="main-title">Weather in 7 Days</h1>
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" id="city-input" placeholder="Type your location" autocomplete="off">
+                    <button id="search-btn" aria-label="Search" title="Search"><i class="ph ph-magnifying-glass search-icon"></i></button>
+                </div>
+                <ul id="search-suggestions" class="suggestions-list hidden"></ul>
+            </div>
+            <div id="error-message" class="hidden">City not found. Please try again.</div>
+        </header>
+
+        <main id="dashboard" class="dashboard hidden">
+            <div class="panel today-panel">
+                <div class="panel-header">
+                    <h2 id="main-card-title">Today's Weather</h2>
+                    <div class="location-pin">
+                        <i class="ph-fill ph-map-pin"></i>
+                        <span id="current-city-name">Toronto</span>
+                    </div>
+                </div>
+                
+                <div class="today-content" id="today-content">
+                    <i id="main-weather-icon" class="ph-fill ph-cloud-sun big-icon"></i>
+                    <h2 class="huge-temp" id="temperature">27°C</h2>
+                    <p class="condition" id="weather-description">Sunny & Cloudy</p>
+                    <div class="extra-metrics hidden" id="extra-metrics">
+                        <div class="metric" title="Humidity"><i class="ph-fill ph-drop"></i> <span id="humidity">0%</span></div>
+                        <div class="metric" title="Wind Speed"><i class="ph-fill ph-wind"></i> <span id="wind-speed">0 km/h</span></div>
+                        <div class="metric" title="UV Index"><i class="ph-fill ph-sun-dim"></i> <span id="uv-index">0</span></div>
+                    </div>
+                    <div class="live-clock">
+                        <span id="live-time">12:00 PM</span> • <span id="live-date">Wed, 24 Jun</span>
+                    </div>
+                </div>
+
+                <div class="skeleton-content hidden" id="today-skeleton">
+                    <div class="skeleton skeleton-icon"></div>
+                    <div class="skeleton skeleton-text skeleton-temp"></div>
+                    <div class="skeleton skeleton-text skeleton-desc"></div>
+                </div>
+            </div>
+
+            <div class="panel forecast-panel">
+                <div class="panel-header">
+                    <h2>Temperature Forecast</h2>
+                    <div class="chart-toggle">
+                        <button id="btn-daily" class="toggle-btn active">Daily</button>
+                        <button id="btn-hourly" class="toggle-btn">Hourly</button>
+                    </div>
+                    <div class="location-pin">
+                        <i class="ph-fill ph-map-pin"></i>
+                        <span id="forecast-city-name">Toronto</span>
+                    </div>
+                </div>
+
+                <div class="chart-container" id="chart-container">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+
+                <div class="forecast-days" id="forecast-days-container">
+                </div>
+
+                <div class="skeleton-content hidden" id="forecast-skeleton">
+                    <div class="skeleton skeleton-chart"></div>
+                    <div class="skeleton-days">
+                        <div class="skeleton skeleton-icon-small"></div>
+                        <div class="skeleton skeleton-icon-small"></div>
+                        <div class="skeleton skeleton-icon-small"></div>
+                        <div class="skeleton skeleton-icon-small"></div>
+                        <div class="skeleton skeleton-icon-small"></div>
+                        <div class="skeleton skeleton-icon-small"></div>
+                        <div class="skeleton skeleton-icon-small"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
