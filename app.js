@@ -67,13 +67,13 @@ cityInput.addEventListener('input', (e) => {
         suggestionsList.classList.add('hidden');
         return;
     }
-    
+
     searchTimeout = setTimeout(async () => {
         try {
             const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=5&appid=${API_KEY}`;
             const res = await fetch(url);
             const data = await res.json();
-            
+
             suggestionsList.innerHTML = '';
             if (data && data.length > 0) {
                 data.forEach(city => {
@@ -121,19 +121,19 @@ themeToggleBtn.addEventListener('click', () => toggleTheme());
 
 // Toggle Logic
 btnDaily.addEventListener('click', () => {
-    if(currentChartView === 'daily') return;
+    if (currentChartView === 'daily') return;
     currentChartView = 'daily';
     btnDaily.classList.add('active');
     btnHourly.classList.remove('active');
-    if(weatherDataCache) updateChartData();
+    if (weatherDataCache) updateChartData();
 });
 
 btnHourly.addEventListener('click', () => {
-    if(currentChartView === 'hourly') return;
+    if (currentChartView === 'hourly') return;
     currentChartView = 'hourly';
     btnHourly.classList.add('active');
     btnDaily.classList.remove('active');
-    if(weatherDataCache) updateChartData();
+    if (weatherDataCache) updateChartData();
 });
 
 window.addEventListener('DOMContentLoaded', init);
@@ -156,17 +156,17 @@ function toggleTheme(forceLight) {
         themeIcon.className = 'ph-fill ph-toggle-left theme-icon';
         localStorage.setItem('weatherTheme', 'dark');
     }
-    
+
     if (forecastChartInstance) {
         updateChartTheme();
     }
 }
 
 function updateChartTheme() {
-    if(!forecastChartInstance) return;
+    if (!forecastChartInstance) return;
     const ctx = document.getElementById('forecastChart').getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    
+
     if (isLightMode) {
         gradient.addColorStop(0, 'rgba(43, 53, 80, 0.3)');
         gradient.addColorStop(1, 'rgba(43, 53, 80, 0.0)');
@@ -192,18 +192,18 @@ function updateClock() {
 async function fetchWeatherDataByCity(defaultCity) {
     const city = cityInput.value.trim() || defaultCity;
     if (!city) return;
-    
+
     showSkeletons();
 
     try {
         const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${API_KEY}`;
         const geoRes = await fetch(geoUrl);
         const geoData = await geoRes.json();
-        
+
         if (!geoData || geoData.length === 0) {
             throw new Error('City not found');
         }
-        
+
         const location = geoData[0];
         await fetchWeatherDataByCoords(location.lat, location.lon, location.name);
         cityInput.value = '';
@@ -216,7 +216,7 @@ async function fetchWeatherDataByCity(defaultCity) {
 
 async function fetchWeatherDataByCoords(lat, lon, cityName) {
     showSkeletons();
-    
+
     let displayCityName = cityName;
     if (cityName === "Current Location") {
         try {
@@ -232,21 +232,21 @@ async function fetchWeatherDataByCoords(lat, lon, cityName) {
     try {
         const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
         const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
-        
+
         const [currentRes, forecastRes] = await Promise.all([
             fetch(currentUrl),
             fetch(forecastUrl)
         ]);
-        
+
         if (!currentRes.ok || !forecastRes.ok) throw new Error('Failed to fetch weather');
-        
+
         const currentData = await currentRes.json();
         const forecastData = await forecastRes.json();
-        
+
         console.log("Weather API Response (Data Shape):", currentData);
 
         weatherDataCache = { current: currentData, forecast: forecastData };
-        
+
         // Process forecast data to get daily summaries
         weatherDataCache.daily = processDailyForecast(forecastData.list);
 
@@ -280,14 +280,14 @@ function processDailyForecast(list) {
             day.descriptions.push(item.weather[0].description);
         }
     });
-    
+
     const daily = Array.from(dailyMap.values()).slice(0, 5);
-    
+
     daily.forEach(day => {
         day.icon = getMostFrequent(day.icons);
         day.description = getMostFrequent(day.descriptions);
     });
-    
+
     return daily;
 }
 
@@ -299,7 +299,7 @@ function getMostFrequent(arr) {
 function updateUI(cityName) {
     hideSkeletons();
     errorMessage.classList.add('hidden');
-    
+
     currentCityName.textContent = cityName;
     forecastCityName.textContent = cityName;
     selectedDayIndex = 0;
@@ -308,15 +308,15 @@ function updateUI(cityName) {
 
     const daily = weatherDataCache.daily;
     forecastDaysContainer.innerHTML = '';
-    
+
     for (let i = 0; i < daily.length; i++) {
         const dayData = daily[i];
         const [year, month, day] = dayData.date.split('-');
         const dateObj = new Date(year, month - 1, day);
-        
+
         const dayName = i === 0 ? 'Today' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
         const owmMap = getOwmIcon(dayData.icon, dayData.description);
-        
+
         const dayDiv = document.createElement('div');
         dayDiv.className = 'day-item' + (i === 0 ? ' active' : '');
         dayDiv.title = owmMap.desc;
@@ -324,14 +324,14 @@ function updateUI(cityName) {
             <span class="day-name">${dayName}</span>
             <i class="ph-fill ${owmMap.icon}"></i>
         `;
-        
+
         dayDiv.addEventListener('click', () => {
             selectedDayIndex = i;
             document.querySelectorAll('.day-item').forEach(el => el.classList.remove('active'));
             dayDiv.classList.add('active');
             updateMainCard(i);
         });
-        
+
         forecastDaysContainer.appendChild(dayDiv);
     }
 
@@ -342,50 +342,50 @@ function updateMainCard(index) {
     if (!weatherDataCache) return;
     const current = weatherDataCache.current;
     const daily = weatherDataCache.daily;
-    
+
     const mainTitle = document.getElementById('main-card-title');
-    
+
     if (index === 0) {
-        if(mainTitle) mainTitle.textContent = "Today's Weather";
+        if (mainTitle) mainTitle.textContent = "Today's Weather";
         temperatureEl.textContent = `${Math.round(current.main.temp)}°C`;
         const owmMap = getOwmIcon(current.weather[0].icon, current.weather[0].description);
         weatherDescriptionEl.textContent = owmMap.desc;
         mainWeatherIcon.className = `ph-fill ${owmMap.icon} big-icon`;
-        
+
         humidityEl.textContent = `${current.main.humidity}%`;
-        windSpeedEl.textContent = `${Math.round(current.wind.speed * 3.6)} km/h`; 
-        uvIndexEl.textContent = '--'; 
-        
-        updateClock(); 
+        windSpeedEl.textContent = `${Math.round(current.wind.speed * 3.6)} km/h`;
+        uvIndexEl.textContent = '--';
+
+        updateClock();
     } else {
         const dayData = daily[index];
         const [year, month, day] = dayData.date.split('-');
         const dateObj = new Date(year, month - 1, day);
-        
-        if(mainTitle) mainTitle.textContent = `${dateObj.toLocaleDateString('en-US', { weekday: 'long' })}'s Forecast`;
-        
+
+        if (mainTitle) mainTitle.textContent = `${dateObj.toLocaleDateString('en-US', { weekday: 'long' })}'s Forecast`;
+
         temperatureEl.textContent = `${Math.round(dayData.temp_max)}°C`;
         const owmMap = getOwmIcon(dayData.icon, dayData.description);
         weatherDescriptionEl.textContent = owmMap.desc;
         mainWeatherIcon.className = `ph-fill ${owmMap.icon} big-icon`;
-        
+
         const noonItem = weatherDataCache.forecast.list.find(item => item.dt_txt.startsWith(dayData.date) && item.dt_txt.includes('12:00:00')) || weatherDataCache.forecast.list.find(item => item.dt_txt.startsWith(dayData.date));
-        
+
         humidityEl.textContent = noonItem ? `${noonItem.main.humidity}%` : '--';
         windSpeedEl.textContent = `${Math.round(dayData.wind_speed * 3.6)} km/h`;
         uvIndexEl.textContent = '--';
-        
+
         liveTimeEl.textContent = "Forecast";
         liveDateEl.textContent = dateObj.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
     }
-    
+
     extraMetricsEl.classList.remove('hidden');
     updateChartData();
 }
 
 function updateChartData() {
-    if(!weatherDataCache) return;
-    
+    if (!weatherDataCache) return;
+
     const labels = [];
     const temperatures = [];
 
@@ -402,7 +402,7 @@ function updateChartData() {
     } else {
         const list = weatherDataCache.forecast.list;
         const dayData = weatherDataCache.daily[selectedDayIndex];
-        
+
         let dayItems;
         if (selectedDayIndex === 0) {
             dayItems = list.slice(0, 8);
@@ -442,7 +442,7 @@ function getOwmIcon(iconCode, description) {
         '50d': 'ph-cloud-fog',
         '50n': 'ph-cloud-fog'
     };
-    
+
     const icon = map[iconCode] || 'ph-cloud';
     const desc = description ? description.charAt(0).toUpperCase() + description.slice(1) : 'Unknown';
     return { desc, icon };
@@ -450,14 +450,14 @@ function getOwmIcon(iconCode, description) {
 
 function renderChart(labels, dataPoints) {
     const ctx = document.getElementById('forecastChart').getContext('2d');
-    
+
     if (forecastChartInstance) {
         forecastChartInstance.destroy();
     }
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
     const borderColor = isLightMode ? '#2B3550' : '#8C99B8';
-    
+
     if (isLightMode) {
         gradient.addColorStop(0, 'rgba(43, 53, 80, 0.3)');
         gradient.addColorStop(1, 'rgba(43, 53, 80, 0.0)');
@@ -468,12 +468,12 @@ function renderChart(labels, dataPoints) {
 
     let pointRadii = 4;
     let pointBgColors = isLightMode ? '#2B3550' : '#FFFFFF';
-    
+
     if (currentChartView === 'daily') {
         pointRadii = labels.map((_, i) => i === selectedDayIndex ? 8 : 4);
-        pointBgColors = labels.map((_, i) => 
-            i === selectedDayIndex 
-                ? (isLightMode ? '#2B3550' : '#FFFFFF') 
+        pointBgColors = labels.map((_, i) =>
+            i === selectedDayIndex
+                ? (isLightMode ? '#2B3550' : '#FFFFFF')
                 : (isLightMode ? 'rgba(43, 53, 80, 0.5)' : 'rgba(255, 255, 255, 0.5)')
         );
     }
@@ -493,7 +493,7 @@ function renderChart(labels, dataPoints) {
                 pointRadius: pointRadii,
                 pointHoverRadius: currentChartView === 'daily' ? pointRadii : 6,
                 fill: true,
-                tension: 0.4 
+                tension: 0.4
             }]
         },
         options: {
@@ -503,7 +503,7 @@ function renderChart(labels, dataPoints) {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return `${context.parsed.y}°C`;
                         }
                     }
@@ -511,12 +511,12 @@ function renderChart(labels, dataPoints) {
             },
             scales: {
                 y: {
-                    display: false, 
+                    display: false,
                     min: Math.min(...dataPoints) - 5,
-                    max: Math.max(...dataPoints) + 5  
+                    max: Math.max(...dataPoints) + 5
                 },
                 x: {
-                    display: false 
+                    display: false
                 }
             },
             layout: {
@@ -528,12 +528,12 @@ function renderChart(labels, dataPoints) {
 
 function showSkeletons() {
     errorMessage.classList.add('hidden');
-    dashboard.classList.remove('hidden'); 
-    
+    dashboard.classList.remove('hidden');
+
     todayContent.classList.add('hidden');
     chartContainer.classList.add('hidden');
     forecastDaysContainer.classList.add('hidden');
-    
+
     todaySkeleton.classList.remove('hidden');
     forecastSkeleton.classList.remove('hidden');
 }
@@ -541,7 +541,7 @@ function showSkeletons() {
 function hideSkeletons() {
     todaySkeleton.classList.add('hidden');
     forecastSkeleton.classList.add('hidden');
-    
+
     todayContent.classList.remove('hidden');
     chartContainer.classList.remove('hidden');
     forecastDaysContainer.classList.remove('hidden');

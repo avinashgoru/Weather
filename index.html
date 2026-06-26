@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,6 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body class="dark-theme">
     <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Light/Dark Mode">
         <span class="theme-label">Light</span>
@@ -23,7 +25,8 @@
             <div class="search-container">
                 <div class="search-box">
                     <input type="text" id="city-input" placeholder="Type your location" autocomplete="off">
-                    <button id="search-btn" aria-label="Search" title="Search"><i class="ph ph-magnifying-glass search-icon"></i></button>
+                    <button id="search-btn" aria-label="Search" title="Search"><i
+                            class="ph ph-magnifying-glass search-icon"></i></button>
                 </div>
                 <ul id="search-suggestions" class="suggestions-list hidden"></ul>
             </div>
@@ -39,15 +42,18 @@
                         <span id="current-city-name">Toronto</span>
                     </div>
                 </div>
-                
+
                 <div class="today-content" id="today-content">
                     <i id="main-weather-icon" class="ph-fill ph-cloud-sun big-icon"></i>
                     <h2 class="huge-temp" id="temperature">27°C</h2>
                     <p class="condition" id="weather-description">Sunny & Cloudy</p>
                     <div class="extra-metrics hidden" id="extra-metrics">
-                        <div class="metric" title="Humidity"><i class="ph-fill ph-drop"></i> <span id="humidity">0%</span></div>
-                        <div class="metric" title="Wind Speed"><i class="ph-fill ph-wind"></i> <span id="wind-speed">0 km/h</span></div>
-                        <div class="metric" title="UV Index"><i class="ph-fill ph-sun-dim"></i> <span id="uv-index">0</span></div>
+                        <div class="metric" title="Humidity"><i class="ph-fill ph-drop"></i> <span
+                                id="humidity">0%</span></div>
+                        <div class="metric" title="Wind Speed"><i class="ph-fill ph-wind"></i> <span id="wind-speed">0
+                                km/h</span></div>
+                        <div class="metric" title="UV Index"><i class="ph-fill ph-sun-dim"></i> <span
+                                id="uv-index">0</span></div>
                     </div>
                     <div class="live-clock">
                         <span id="live-time">12:00 PM</span> • <span id="live-date">Wed, 24 Jun</span>
@@ -94,8 +100,9 @@
             </div>
         </main>
     </div>
-    
+
     <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>
