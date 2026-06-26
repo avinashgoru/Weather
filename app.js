@@ -242,6 +242,8 @@ async function fetchWeatherDataByCoords(lat, lon, cityName) {
         
         const currentData = await currentRes.json();
         const forecastData = await forecastRes.json();
+        
+        console.log("Weather API Response (Data Shape):", currentData);
 
         weatherDataCache = { current: currentData, forecast: forecastData };
         
