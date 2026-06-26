@@ -1,5 +1,3 @@
-const API_KEY = '7dd545e8cdf025e84696ddbf6bdc1266';
-
 const cityInput = document.getElementById('city-input');
 const searchBtn = document.getElementById('search-btn');
 const suggestionsList = document.getElementById('search-suggestions');
@@ -232,13 +230,25 @@ async function fetchWeatherDataByCoords(lat, lon, cityName) {
     }
 
     try {
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,relative_humidity_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,uv_index_max,windspeed_10m_max&timezone=auto`;
-        const weatherRes = await fetch(weatherUrl);
-        if (!weatherRes.ok) throw new Error('Failed to fetch weather');
-        const weatherData = await weatherRes.json();
+        const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
+        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
+        
+        const [currentRes, forecastRes] = await Promise.all([
+            fetch(currentUrl),
+            fetch(forecastUrl)
+        ]);
+        
+        if (!currentRes.ok || !forecastRes.ok) throw new Error('Failed to fetch weather');
+        
+        const currentData = await currentRes.json();
+        const forecastData = await forecastRes.json();
 
-        weatherDataCache = weatherData; // Cache for toggling
-        updateUI(weatherData, displayCityName);
+        weatherDataCache = { current: currentData, forecast: forecastData };
+        
+        // Process forecast data to get daily summaries
+        weatherDataCache.daily = processDailyForecast(forecastData.list);
+
+        updateUI(displayCityName);
     } catch (err) {
         hideSkeletons();
         errorMessage.textContent = 'Failed to fetch weather data. Please try again.';
@@ -246,7 +256,45 @@ async function fetchWeatherDataByCoords(lat, lon, cityName) {
     }
 }
 
-function updateUI(weatherData, cityName) {
+function processDailyForecast(list) {
+    const dailyMap = new Map();
+    list.forEach(item => {
+        const date = item.dt_txt.split(' ')[0];
+        if (!dailyMap.has(date)) {
+            dailyMap.set(date, {
+                date: date,
+                temp_max: item.main.temp_max,
+                temp_min: item.main.temp_min,
+                wind_speed: item.wind.speed,
+                icons: [item.weather[0].icon],
+                descriptions: [item.weather[0].description]
+            });
+        } else {
+            const day = dailyMap.get(date);
+            day.temp_max = Math.max(day.temp_max, item.main.temp_max);
+            day.temp_min = Math.min(day.temp_min, item.main.temp_min);
+            day.wind_speed = Math.max(day.wind_speed, item.wind.speed);
+            day.icons.push(item.weather[0].icon);
+            day.descriptions.push(item.weather[0].description);
+        }
+    });
+    
+    const daily = Array.from(dailyMap.values()).slice(0, 5);
+    
+    daily.forEach(day => {
+        day.icon = getMostFrequent(day.icons);
+        day.description = getMostFrequent(day.descriptions);
+    });
+    
+    return daily;
+}
+
+function getMostFrequent(arr) {
+    const counts = arr.reduce((a, c) => { a[c] = (a[c] || 0) + 1; return a; }, {});
+    return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+}
+
+function updateUI(cityName) {
     hideSkeletons();
     errorMessage.classList.add('hidden');
     
@@ -256,25 +304,23 @@ function updateUI(weatherData, cityName) {
 
     updateMainCard(0);
 
-    // Bottom Grid
-    const daily = weatherData.daily;
+    const daily = weatherDataCache.daily;
     forecastDaysContainer.innerHTML = '';
-    const weatherProp = 'weather' + 'code';
     
-    for (let i = 0; i < 7; i++) {
-        const dateStr = daily.time[i];
-        const [year, month, day] = dateStr.split('-');
-        const date = new Date(year, month - 1, day);
+    for (let i = 0; i < daily.length; i++) {
+        const dayData = daily[i];
+        const [year, month, day] = dayData.date.split('-');
+        const dateObj = new Date(year, month - 1, day);
         
-        const dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
-        const dayWmo = getWmoDescriptionAndIcon(daily[weatherProp][i]);
+        const dayName = i === 0 ? 'Today' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+        const owmMap = getOwmIcon(dayData.icon, dayData.description);
         
         const dayDiv = document.createElement('div');
         dayDiv.className = 'day-item' + (i === 0 ? ' active' : '');
-        dayDiv.title = dayWmo.desc;
+        dayDiv.title = owmMap.desc;
         dayDiv.innerHTML = `
             <span class="day-name">${dayName}</span>
-            <i class="ph-fill ${dayWmo.icon}"></i>
+            <i class="ph-fill ${owmMap.icon}"></i>
         `;
         
         dayDiv.addEventListener('click', () => {
@@ -292,69 +338,43 @@ function updateUI(weatherData, cityName) {
 
 function updateMainCard(index) {
     if (!weatherDataCache) return;
-    const weatherData = weatherDataCache;
-    const daily = weatherData.daily;
-    const current = weatherData.current_weather;
-    const weatherProp = 'weather' + 'code';
+    const current = weatherDataCache.current;
+    const daily = weatherDataCache.daily;
     
     const mainTitle = document.getElementById('main-card-title');
     
     if (index === 0) {
-        // Today Live Data
         if(mainTitle) mainTitle.textContent = "Today's Weather";
-        temperatureEl.textContent = `${Math.round(current.temperature)}°C`;
-        const wmoMap = getWmoDescriptionAndIcon(current[weatherProp]);
-        weatherDescriptionEl.textContent = wmoMap.desc;
-        mainWeatherIcon.className = `ph-fill ${wmoMap.icon} big-icon`;
+        temperatureEl.textContent = `${Math.round(current.main.temp)}°C`;
+        const owmMap = getOwmIcon(current.weather[0].icon, current.weather[0].description);
+        weatherDescriptionEl.textContent = owmMap.desc;
+        mainWeatherIcon.className = `ph-fill ${owmMap.icon} big-icon`;
         
-        const currentHourIndex = weatherData.hourly.time.findIndex(t => t.startsWith(current.time));
-        let humidity = 0;
-        if (currentHourIndex !== -1) {
-            humidity = weatherData.hourly.relative_humidity_2m[currentHourIndex];
-        }
-        const windProp = 'wind' + 'speed';
-        const windSpeed = current[windProp];
-        const uvMax = daily.uv_index_max[0];
-
-        humidityEl.textContent = `${humidity}%`;
-        windSpeedEl.textContent = `${windSpeed} km/h`;
-        uvIndexEl.textContent = uvMax !== undefined ? `${Math.round(uvMax)}` : '0';
+        humidityEl.textContent = `${current.main.humidity}%`;
+        windSpeedEl.textContent = `${Math.round(current.wind.speed * 3.6)} km/h`; 
+        uvIndexEl.textContent = '--'; 
         
-        updateClock(); // instantly restore live clock
+        updateClock(); 
     } else {
-        // Future Forecast Data
-        const dateStr = daily.time[index];
-        const [year, month, day] = dateStr.split('-');
-        const date = new Date(year, month - 1, day);
+        const dayData = daily[index];
+        const [year, month, day] = dayData.date.split('-');
+        const dateObj = new Date(year, month - 1, day);
         
-        if(mainTitle) mainTitle.textContent = `${date.toLocaleDateString('en-US', { weekday: 'long' })}'s Forecast`;
+        if(mainTitle) mainTitle.textContent = `${dateObj.toLocaleDateString('en-US', { weekday: 'long' })}'s Forecast`;
         
-        temperatureEl.textContent = `${Math.round(daily.temperature_2m_max[index])}°C`;
-        const wmoMap = getWmoDescriptionAndIcon(daily[weatherProp][index]);
-        weatherDescriptionEl.textContent = wmoMap.desc;
-        mainWeatherIcon.className = `ph-fill ${wmoMap.icon} big-icon`;
+        temperatureEl.textContent = `${Math.round(dayData.temp_max)}°C`;
+        const owmMap = getOwmIcon(dayData.icon, dayData.description);
+        weatherDescriptionEl.textContent = owmMap.desc;
+        mainWeatherIcon.className = `ph-fill ${owmMap.icon} big-icon`;
         
-        // Approximate metrics for future days
-        // The API provides maximum wind velocity in daily, but we might have requested it or just use a fallback if not present
-        const windDailyProp = 'wind' + 'speed_10m_max';
-        const windSpeed = daily[windDailyProp] ? Math.round(daily[windDailyProp][index]) : '--';
-        const uvMax = daily.uv_index_max ? daily.uv_index_max[index] : '--';
+        const noonItem = weatherDataCache.forecast.list.find(item => item.dt_txt.startsWith(dayData.date) && item.dt_txt.includes('12:00:00')) || weatherDataCache.forecast.list.find(item => item.dt_txt.startsWith(dayData.date));
         
-        // Pick noon humidity for the future day
-        const targetTime = `${dateStr}T12:00`;
-        const hourIndex = weatherData.hourly.time.findIndex(t => t === targetTime);
-        let humidity = '--';
-        if (hourIndex !== -1) {
-            humidity = weatherData.hourly.relative_humidity_2m[hourIndex];
-        }
+        humidityEl.textContent = noonItem ? `${noonItem.main.humidity}%` : '--';
+        windSpeedEl.textContent = `${Math.round(dayData.wind_speed * 3.6)} km/h`;
+        uvIndexEl.textContent = '--';
         
-        humidityEl.textContent = `${humidity}%`;
-        windSpeedEl.textContent = `${windSpeed} km/h`;
-        uvIndexEl.textContent = uvMax !== '--' ? `${Math.round(uvMax)}` : uvMax;
-        
-        // Stop clock overwriting and show the day
         liveTimeEl.textContent = "Forecast";
-        liveDateEl.textContent = date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+        liveDateEl.textContent = dateObj.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
     }
     
     extraMetricsEl.classList.remove('hidden');
@@ -369,61 +389,61 @@ function updateChartData() {
 
     if (currentChartView === 'daily') {
         const daily = weatherDataCache.daily;
-        for (let i = 0; i < 7; i++) {
-            const dateStr = daily.time[i];
-            const [year, month, day] = dateStr.split('-');
-            const date = new Date(year, month - 1, day);
-            const dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
+        for (let i = 0; i < daily.length; i++) {
+            const dayData = daily[i];
+            const [year, month, day] = dayData.date.split('-');
+            const dateObj = new Date(year, month - 1, day);
+            const dayName = i === 0 ? 'Today' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
             labels.push(dayName);
-            temperatures.push(Math.round(daily.temperature_2m_max[i]));
+            temperatures.push(Math.round(dayData.temp_max));
         }
     } else {
-        // Hourly
-        const hourly = weatherDataCache.hourly;
-        let startIndex;
+        const list = weatherDataCache.forecast.list;
+        const dayData = weatherDataCache.daily[selectedDayIndex];
         
+        let dayItems;
         if (selectedDayIndex === 0) {
-            // Next 24 hours from current hour
-            const currentTimeStr = weatherDataCache.current_weather.time;
-            startIndex = hourly.time.findIndex(t => t.startsWith(currentTimeStr));
-            if (startIndex === -1) startIndex = 0; 
+            dayItems = list.slice(0, 8);
         } else {
-            // 24 hours for the selected future day (starting at midnight)
-            const selectedDateStr = weatherDataCache.daily.time[selectedDayIndex];
-            const startOfDayStr = `${selectedDateStr}T00:00`;
-            startIndex = hourly.time.findIndex(t => t === startOfDayStr);
-            if (startIndex === -1) startIndex = selectedDayIndex * 24;
+            dayItems = list.filter(item => item.dt_txt.startsWith(dayData.date));
         }
 
-        for (let i = 0; i < 24; i++) {
-            const idx = startIndex + i;
-            if (idx >= hourly.time.length) break;
-            
-            const timeStr = hourly.time[idx];
-            const date = new Date(timeStr);
-            const timeLabel = date.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
-            
+        dayItems.forEach((item, i) => {
+            const dateObj = new Date(item.dt * 1000);
+            const timeLabel = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
             labels.push((i === 0 && selectedDayIndex === 0) ? 'Now' : timeLabel);
-            temperatures.push(Math.round(hourly.temperature_2m[idx]));
-        }
+            temperatures.push(Math.round(item.main.temp));
+        });
     }
 
     renderChart(labels, temperatures);
 }
 
-function getWmoDescriptionAndIcon(code) {
-    if (code === 0) return { desc: 'Clear sky', icon: 'ph-sun' };
-    if (code === 1) return { desc: 'Mainly clear', icon: 'ph-sun' };
-    if (code === 2) return { desc: 'Partly cloudy', icon: 'ph-cloud-sun' };
-    if (code === 3) return { desc: 'Overcast', icon: 'ph-cloud' };
-    if (code >= 45 && code <= 48) return { desc: 'Fog', icon: 'ph-cloud-fog' };
-    if (code >= 51 && code <= 55) return { desc: 'Drizzle', icon: 'ph-cloud-rain' };
-    if (code >= 61 && code <= 65) return { desc: 'Rain', icon: 'ph-cloud-rain' };
-    if (code >= 71 && code <= 77) return { desc: 'Snow', icon: 'ph-cloud-snow' };
-    if (code >= 80 && code <= 82) return { desc: 'Rain showers', icon: 'ph-cloud-rain' };
-    if (code >= 85 && code <= 86) return { desc: 'Snow showers', icon: 'ph-cloud-snow' };
-    if (code >= 95 && code <= 99) return { desc: 'Thunderstorm', icon: 'ph-cloud-lightning' };
-    return { desc: 'Unknown', icon: 'ph-cloud' };
+function getOwmIcon(iconCode, description) {
+    const map = {
+        '01d': 'ph-sun',
+        '01n': 'ph-moon',
+        '02d': 'ph-cloud-sun',
+        '02n': 'ph-cloud-moon',
+        '03d': 'ph-cloud',
+        '03n': 'ph-cloud',
+        '04d': 'ph-cloud',
+        '04n': 'ph-cloud',
+        '09d': 'ph-cloud-rain',
+        '09n': 'ph-cloud-rain',
+        '10d': 'ph-cloud-sun-rain',
+        '10n': 'ph-cloud-moon-rain',
+        '11d': 'ph-cloud-lightning',
+        '11n': 'ph-cloud-lightning',
+        '13d': 'ph-cloud-snow',
+        '13n': 'ph-cloud-snow',
+        '50d': 'ph-cloud-fog',
+        '50n': 'ph-cloud-fog'
+    };
+    
+    const icon = map[iconCode] || 'ph-cloud';
+    const desc = description ? description.charAt(0).toUpperCase() + description.slice(1) : 'Unknown';
+    return { desc, icon };
 }
 
 function renderChart(labels, dataPoints) {
